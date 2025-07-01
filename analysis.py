@@ -21,6 +21,7 @@ RETRACE_BAR_COUNT = params['retracement_bars']
 VALIDATION_BUFFER = params['validation_buffer_ticks'] * TICK_SIZE
 TP_MULTIPLIER = params['tp_multiplier']
 SL_MULTIPLIER = params['sl_multiplier']
+INCLUDE_LOGS = params['include_logs']
 
 # --- Start GUI file picker ---
 root = tk.Tk()
@@ -214,9 +215,6 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
     entry_time = df_day.loc[entry_index, 'Time']
     spread = abs(extreme_price - zeroL)
 
-    # tp_price = zeroL + (spread * TP_MULTIPLIER) if direction == 'long' else zeroL - (spread * TP_MULTIPLIER)
-    # sl_price = zeroL - (spread * SL_MULTIPLIER) if direction == 'long' else zeroL + (spread * SL_MULTIPLIER)
-
     tp_price = entry_price + (spread * TP_MULTIPLIER) if direction == 'long' else entry_price - (spread * TP_MULTIPLIER)
     sl_price = entry_price - (spread * SL_MULTIPLIER) if direction == 'long' else entry_price + (spread * SL_MULTIPLIER)
 
@@ -346,6 +344,15 @@ def log_popup(text):
     log(text)
     log_output += text
 
+def save_log():
+    global file_output
+    if not file_output:
+        return
+
+    output_filename = generate_log_filename()
+    with open(output_filename, "w") as file:
+        file.write(file_output)
+
 def set_excel_property(key, value):
     global excel_obj
     excel_obj[key] = value
@@ -437,11 +444,9 @@ def main():
     else:
         log_popup("No valid trades found.\n")
 
-    output_filename = generate_log_filename()
-    with open(output_filename, "w") as file:
-        file.write(file_output)
-
-    save_excel_log()
+    if INCLUDE_LOGS:
+        save_log()
+        save_excel_log()
 
     messagebox.showinfo("V-Shape Trade Analysis", log_output)
 

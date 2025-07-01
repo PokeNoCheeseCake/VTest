@@ -22,6 +22,7 @@ def show_input_form():
             validation_buffer_ticks = int(entry_validation_buffer_ticks.get())
             tp_multiplier = float(entry_tp_multiplier.get()) / 100  # convert from % to ratio
             sl_multiplier = float(entry_sl_multiplier.get()) / 100  # convert from % to ratio
+            include_logs = include_logs_var.get()
 
             if not file_paths:
                 raise ValueError("You must select at least one file.")
@@ -48,7 +49,8 @@ def show_input_form():
                 "market_close": market_close,
                 "validation_buffer_ticks": validation_buffer_ticks,
                 "tp_multiplier": tp_multiplier,
-                "sl_multiplier": sl_multiplier
+                "sl_multiplier": sl_multiplier,
+                "include_logs": include_logs
             })
 
             root.destroy()
@@ -120,7 +122,11 @@ def show_input_form():
     entry_sl_multiplier.insert(0, "100")
     entry_sl_multiplier.grid(row=11, column=1)
 
-    tk.Button(root, text="Run Analysis", command=submit).grid(row=12, column=0, columnspan=2, pady=10)
+    # Include Logs Checkbox
+    include_logs_var = tk.BooleanVar(value=False)  # default: un-checked
+    tk.Checkbutton(root, text="Include Logs in Output", variable=include_logs_var).grid(row=12, column=0, sticky="e")
+
+    tk.Button(root, text="Run Analysis", command=submit).grid(row=13, column=0, columnspan=2, pady=10)
 
     root.mainloop()
     return params
