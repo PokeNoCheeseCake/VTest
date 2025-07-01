@@ -21,6 +21,7 @@ RETRACE_BAR_COUNT = params['retracement_bars']
 VALIDATION_BUFFER = params['validation_buffer_ticks'] * TICK_SIZE
 TP_MULTIPLIER = params['tp_multiplier']
 SL_MULTIPLIER = params['sl_multiplier']
+SL_POINT_LIMIT = params['sl_point_limit']
 INCLUDE_LOGS = params['include_logs']
 
 # --- Start GUI file picker ---
@@ -218,7 +219,11 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
     spread = abs(extreme_price - zeroL)
 
     tp_price = entry_price + (spread * TP_MULTIPLIER) if direction == 'long' else entry_price - (spread * TP_MULTIPLIER)
-    sl_price = entry_price - (spread * SL_MULTIPLIER) if direction == 'long' else entry_price + (spread * SL_MULTIPLIER)
+
+    # Take the spread multiplier from the entry or the point limit from the entry - whichever one is a smaller stop loss
+    sl_spread = entry_price - (spread * SL_MULTIPLIER) if direction == 'long' else entry_price + (spread * SL_MULTIPLIER)
+    sl_point = entry_price - SL_POINT_LIMIT if direction == 'long' else entry_price + SL_POINT_LIMIT
+    sl_price = max(sl_spread, sl_point) if direction == 'long' else min(sl_spread, sl_point)
 
     log(f"[Day {day_index + 1} - {current_date}] Take Profit: {tp_price}, Stop Loss: {sl_price}\n")
 
@@ -299,8 +304,11 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
                          (direction == 'short' and exit_price <= tp_price) else "loss"
         trigger = "EOD"
 
+    p_or_l = abs(exit_price - entry_price)
+    revenue = p_or_l if result == 'win' else -p_or_l
+
     log(f"[Day {day_index + 1} - {current_date}] {result.upper()}: Entry at {entry_price} ({entry_time}), "
-        f"{trigger} hit at {exit_time}, Exit at {exit_price}\n")
+        f"{trigger} hit at {exit_time}, Exit at {exit_price}, Revenue: {revenue}\n")
 
     if direction == 'long':
         log(f"[Day {day_index + 1} - {current_date}] Highest while active: {active_hh}, "
@@ -312,17 +320,14 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
     set_excel_property("Entry Price", entry_price)
     set_excel_property("Long/Short", 'Long' if direction == 'long' else 'Short')
     set_excel_property("W/L", "W" if result == 'win' else "L")
-    set_excel_property("Balance", exit_price - entry_price)
+    set_excel_property("Balance", revenue)
     set_excel_property("EX while active", active_hh if direction == 'long' else active_ll)
     set_excel_property("En+Sp", tp_price)
     set_excel_property("EX before 0L", extended_hh if direction == 'long' else extended_ll)
 
-    p_or_l = abs(exit_price - entry_price)
-
     return result, p_or_l
 
 # --- Log Functions ---
-
 def generate_log_filename() -> str:
     # Get the filename without folders
     base_name = "Analysis_From"

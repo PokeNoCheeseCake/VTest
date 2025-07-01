@@ -22,6 +22,7 @@ def show_input_form():
             validation_buffer_ticks = int(entry_validation_buffer_ticks.get())
             tp_multiplier = float(entry_tp_multiplier.get()) / 100  # convert from % to ratio
             sl_multiplier = float(entry_sl_multiplier.get()) / 100  # convert from % to ratio
+            sl_point_limit = float(entry_sl_points.get())
             include_logs = include_logs_var.get()
 
             if not file_paths:
@@ -50,6 +51,7 @@ def show_input_form():
                 "validation_buffer_ticks": validation_buffer_ticks,
                 "tp_multiplier": tp_multiplier,
                 "sl_multiplier": sl_multiplier,
+                "sl_point_limit": sl_point_limit,
                 "include_logs": include_logs
             })
 
@@ -79,7 +81,7 @@ def show_input_form():
 
     tk.Label(root, text="Retracement Ratio (%)").grid(row=3, column=0, sticky="e")
     entry_retrace_ratio = tk.Entry(root)
-    entry_retrace_ratio.insert(0, "80")
+    entry_retrace_ratio.insert(0, "100")
     entry_retrace_ratio.grid(row=3, column=1)
 
     tk.Label(root, text="Retracement Bar Minimum Count").grid(row=4, column=0, sticky="e")
@@ -109,24 +111,29 @@ def show_input_form():
 
     tk.Label(root, text="Validation Buffer Ticks (After 100% Retracement)").grid(row=9, column=0, sticky="e")
     entry_validation_buffer_ticks = tk.Entry(root)
-    entry_validation_buffer_ticks.insert(0, "2")
+    entry_validation_buffer_ticks.insert(0, "4")
     entry_validation_buffer_ticks.grid(row=9, column=1)
 
-    tk.Label(root, text="TP Multiplier from 0L (%)").grid(row=10, column=0, sticky="e")
+    tk.Label(root, text="TP Multiplier (%)").grid(row=10, column=0, sticky="e")
     entry_tp_multiplier = tk.Entry(root)
     entry_tp_multiplier.insert(0, "100")
     entry_tp_multiplier.grid(row=10, column=1)
 
-    tk.Label(root, text="SL Multiplier from 0L (%)").grid(row=11, column=0, sticky="e")
+    tk.Label(root, text="SL Multiplier (%)").grid(row=11, column=0, sticky="e")
     entry_sl_multiplier = tk.Entry(root)
-    entry_sl_multiplier.insert(0, "100")
+    entry_sl_multiplier.insert(0, "40")
     entry_sl_multiplier.grid(row=11, column=1)
+
+    tk.Label(root, text="SL Point Limit").grid(row=12, column=0, sticky="e")
+    entry_sl_points = tk.Entry(root)
+    entry_sl_points.insert(0, "6")
+    entry_sl_points.grid(row=12, column=1)
 
     # Include Logs Checkbox
     include_logs_var = tk.BooleanVar(value=False)  # default: un-checked
-    tk.Checkbutton(root, text="Include Logs in Output", variable=include_logs_var).grid(row=12, column=0, sticky="e")
+    tk.Checkbutton(root, text="Include Logs in Output", variable=include_logs_var).grid(row=13, column=0, sticky="e")
 
-    tk.Button(root, text="Run Analysis", command=submit).grid(row=13, column=0, columnspan=2, pady=10)
+    tk.Button(root, text="Run Analysis", command=submit).grid(row=14, column=0, columnspan=2, pady=10)
 
     root.mainloop()
     return params
