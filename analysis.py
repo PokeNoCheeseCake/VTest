@@ -37,15 +37,17 @@ log_output = ""
 file_output = ""
 
 excel_obj = {"Date": '',
-             "0L": '',
-             "EX": '',
-             "RT %": '',
-             "Spread": '',
-             "Entry Price": '',
-             "Long/Short": '',
-             "W/L": '',
-             "EX while active": '',
-             "EX before 0L": ''}
+                 "Long/Short": '',
+                 "Entry Price": '',
+                 "Spread": '',
+                 "0L": '',
+                 "EX": '',
+                 "RT %": '',
+                 "W/L": '',
+                 "Balance": '',
+                 "EX while active": '',
+                 "En+Sp": '',
+                 "EX before 0L": ''}
 excel_logs = []
 
 # --- Helper Functions ---
@@ -310,7 +312,9 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
     set_excel_property("Entry Price", entry_price)
     set_excel_property("Long/Short", 'Long' if direction == 'long' else 'Short')
     set_excel_property("W/L", "W" if result == 'win' else "L")
+    set_excel_property("Balance", exit_price - entry_price)
     set_excel_property("EX while active", active_hh if direction == 'long' else active_ll)
+    set_excel_property("En+Sp", tp_price)
     set_excel_property("EX before 0L", extended_hh if direction == 'long' else extended_ll)
 
     p_or_l = abs(exit_price - entry_price)
@@ -360,14 +364,16 @@ def set_excel_property(key, value):
 def reset_excel_obj(date):
     global excel_obj
     excel_obj = {"Date": date,
+                 "Long/Short": '',
+                 "Entry Price": '',
+                 "Spread": '',
                  "0L": '',
                  "EX": '',
                  "RT %": '',
-                 "Spread": '',
-                 "Entry Price": '',
-                 "Long/Short": '',
                  "W/L": '',
+                 "Balance": '',
                  "EX while active": '',
+                 "En+Sp": '',
                  "EX before 0L": ''}
 
 def log_excel_entry():
