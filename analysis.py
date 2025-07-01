@@ -48,7 +48,8 @@ excel_obj = {"Date": '',
                  "Balance": '',
                  "EX while active": '',
                  "En+Sp": '',
-                 "EX before 0L": ''}
+                 "EX before 0L": '',
+                 "Max % of Spread": ''}
 excel_logs = []
 
 # --- Helper Functions ---
@@ -306,6 +307,7 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
 
     p_or_l = abs(exit_price - entry_price)
     revenue = p_or_l if result == 'win' else -p_or_l
+    ex_before_0L = extended_hh if direction == 'long' else extended_ll
 
     log(f"[Day {day_index + 1} - {current_date}] {result.upper()}: Entry at {entry_price} ({entry_time}), "
         f"{trigger} hit at {exit_time}, Exit at {exit_price}, Revenue: {revenue}\n")
@@ -323,7 +325,8 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
     set_excel_property("Balance", revenue)
     set_excel_property("EX while active", active_hh if direction == 'long' else active_ll)
     set_excel_property("En+Sp", tp_price)
-    set_excel_property("EX before 0L", extended_hh if direction == 'long' else extended_ll)
+    set_excel_property("EX before 0L", ex_before_0L)
+    set_excel_property("Max % of Spread", (abs(ex_before_0L - entry_price)/spread) * 100)
 
     return result, p_or_l
 
@@ -379,7 +382,8 @@ def reset_excel_obj(date):
                  "Balance": '',
                  "EX while active": '',
                  "En+Sp": '',
-                 "EX before 0L": ''}
+                 "EX before 0L": '',
+                 "Max % of Spread": ''}
 
 def log_excel_entry():
     global excel_obj
