@@ -249,6 +249,7 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index, is_
     exit_time = None
     trigger = "EOD"
     current_index = entry_index + 1
+    exit_index = entry_index + 1
 
     for j in range(entry_index + 1, len(df_day)):
         current_index = j
@@ -286,6 +287,7 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index, is_
                     exit_time = time_j
                     exited = True
             if exited:
+                exit_index = current_index
                 extended_hh = active_hh
                 extended_ll = active_ll
 
@@ -307,6 +309,7 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index, is_
                 result = "win" if (direction == 'long' and close >= tp_price) or \
                                  (direction == 'short' and close <= tp_price) else "loss"
                 trigger = "EOD"
+                exit_index = current_index
             break
 
     if not exited and exit_price is None:
@@ -317,6 +320,7 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index, is_
         result = "win" if (direction == 'long' and exit_price >= tp_price) or \
                          (direction == 'short' and exit_price <= tp_price) else "loss"
         trigger = "EOD"
+        exit_index = current_index
 
     p_or_l = abs(exit_price - entry_price)
     revenue = p_or_l if result == 'win' else -p_or_l
@@ -341,7 +345,7 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index, is_
     set_excel_property("EX before 0L", ex_before_0L)
     set_excel_property("Max % of Spread", (abs(ex_before_0L - entry_price)/spread) * 100)
 
-    return result, p_or_l, current_index
+    return result, p_or_l, exit_index
 
 # --- Log Functions ---
 def generate_log_filename() -> str:
@@ -467,9 +471,20 @@ def main():
                     log_excel_entry()
                     reset_excel_obj(date, True)
 
-                    reentry_result = analyze_v_shape(df_day, day_index, exit_index, True)
+                    deadline_index = df_day[df_day["Time"] == REENTRY_DEADLINE].index
 
-                    if reentry_result['validation_found']:
+                    if not deadline_index.empty:
+                        deadline_index = deadline_index[0]  # Get the actual index value
+                        # Now you can use deadline_index in further logic
+                    else:
+                        # Handle the case where no matching time was found
+                        deadline_index = None
+
+                    reentry_result = None
+                    if deadline_index is not None:
+                        reentry_result = analyze_v_shape(df_day, day_index, deadline_index, True)
+
+                    if reentry_result is not None and reentry_result['validation_found']:
                         reentry_validation += 1
 
                         entry_idx = reentry_result['entry_index']
