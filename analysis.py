@@ -1,8 +1,7 @@
 # --- Imports ---
 import pandas as pd
-from datetime import time
 import tkinter as tk
-from tkinter import filedialog, messagebox, simpledialog
+from tkinter import messagebox
 import os
 from datetime import datetime
 from input_form import show_input_form
@@ -21,6 +20,11 @@ RETRACE_BAR_COUNT = params['retracement_bars']
 VALIDATION_BUFFER = params['validation_buffer_ticks'] * TICK_SIZE
 TP_MULTIPLIER = params['tp_multiplier']
 SL_MULTIPLIER = params['sl_multiplier']
+SL_POINT_LIMIT = params['sl_point_limit']
+REENTRY_DEADLINE = params['reentry_deadline']
+REENTRY_TP = params['reentry_tp_multiplier']
+REENTRY_SL = params['reentry_sl_multiplier']
+INCLUDE_LOGS = params['include_logs']
 
 # --- Start GUI file picker ---
 root = tk.Tk()
@@ -36,15 +40,19 @@ log_output = ""
 file_output = ""
 
 excel_obj = {"Date": '',
-             "0L": '',
-             "EX": '',
-             "RT %": '',
-             "Spread": '',
-             "Entry Price": '',
-             "Long/Short": '',
-             "W/L": '',
-             "EX while active": '',
-             "EX before 0L": ''}
+             "Re-entry": '',
+                 "Long/Short": '',
+                 "Entry Price": '',
+                 "Spread": '',
+                 "0L": '',
+                 "EX": '',
+                 "RT %": '',
+                 "W/L": '',
+                 "Balance": '',
+                 "EX while active": '',
+                 "En+Sp": '',
+                 "EX before 0L": '',
+                 "Max % of Spread": ''}
 excel_logs = []
 
 # --- Helper Functions ---
@@ -83,7 +91,7 @@ def load_and_split_files(file_paths):
 
     return all_dfs
 
-def analyze_v_shape(df_day, day_index):
+def analyze_v_shape(df_day, day_index, start_index=1, is_reentry=False):
     global log_output
 
     zeroL = df_day.iloc[0]['Close']
@@ -103,9 +111,11 @@ def analyze_v_shape(df_day, day_index):
     retracement_locked = False
     retrace_ratio = None
 
-    log(f"[Day {day_index + 1} - {current_date}] Zero Line: {zeroL}\n")
-    for i in range(1, len(df_day)):
-        if df_day.loc[i, 'Time'] > ENTRY_DEADLINE:
+    if not is_reentry:
+        log(f"[Day {day_index + 1} - {current_date}] Zero Line: {zeroL}\n")
+
+    for i in range(start_index, len(df_day)):
+        if df_day.loc[i, 'Time'] > ENTRY_DEADLINE and not is_reentry:
             break
 
         current_time = df_day.loc[i, 'Time']
@@ -180,14 +190,14 @@ def analyze_v_shape(df_day, day_index):
                     found_extreme = True
 
     if found_extreme:
-        log(f"[Day {day_index + 1} - {current_date}] Found {mode} at {df_day.loc[extreme_index, 'Time']} (price: {extreme_price}, spread: {max_spread})\n")
+        log(f"[Day {day_index + 1} - {current_date}{' (Re-entry)' if is_reentry else ''}] Found {mode} at {df_day.loc[extreme_index, 'Time']} (price: {extreme_price}, spread: {max_spread})\n")
     if found_retrace:
         log(
-            f"[Day {day_index + 1} - {current_date}] Retrace found at {df_day.loc[retrace_index, 'Time']} (percent: {retrace_ratio * 100}%)\n")
+            f"[Day {day_index + 1} - {current_date}{' (Re-entry)' if is_reentry else ''}] Retrace found at {df_day.loc[retrace_index, 'Time']} (percent: {retrace_ratio * 100}%)\n")
     if not found_validation:
-        log(f"[Day {day_index + 1} - {current_date}] No valid trade setup found.\n")
+        log(f"[Day {day_index + 1} - {current_date}{' (Re-entry)' if is_reentry else ''}] No valid trade setup found.\n")
     else:
-        log(f"[Day {day_index + 1} - {current_date}] Entered {'long' if mode == 'HH' else 'short'} at {df_day.loc[entry_index, 'Time']}\n")
+        log(f"[Day {day_index + 1} - {current_date}{' (Re-entry)' if is_reentry else ''}] Entered {'long' if mode == 'HH' else 'short'} at {df_day.loc[entry_index, 'Time']}\n")
 
     set_excel_property("EX", extreme_price)
     set_excel_property("RT %", f"{retrace_ratio * 100:.2f}%" if retrace_ratio is not None else "")
@@ -202,7 +212,7 @@ def analyze_v_shape(df_day, day_index):
         "extreme_price": extreme_price
     }
 
-def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
+def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index, is_reentry=False):
     global log_output
     zeroL = df_day.iloc[0]['Close']
     current_date = df_day.loc[0, 'Date']
@@ -214,13 +224,20 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
     entry_time = df_day.loc[entry_index, 'Time']
     spread = abs(extreme_price - zeroL)
 
-    # tp_price = zeroL + (spread * TP_MULTIPLIER) if direction == 'long' else zeroL - (spread * TP_MULTIPLIER)
-    # sl_price = zeroL - (spread * SL_MULTIPLIER) if direction == 'long' else zeroL + (spread * SL_MULTIPLIER)
+    tp_mult = REENTRY_TP if is_reentry else TP_MULTIPLIER
+    sl_mult = REENTRY_SL if is_reentry else SL_MULTIPLIER
 
-    tp_price = entry_price + (spread * TP_MULTIPLIER) if direction == 'long' else entry_price - (spread * TP_MULTIPLIER)
-    sl_price = entry_price - (spread * SL_MULTIPLIER) if direction == 'long' else entry_price + (spread * SL_MULTIPLIER)
+    tp_price = entry_price + (spread * tp_mult) if direction == 'long' else entry_price - (spread * tp_mult)
 
-    log(f"[Day {day_index + 1} - {current_date}] Take Profit: {tp_price}, Stop Loss: {sl_price}\n")
+    # Take the spread multiplier from the entry or the point limit from the entry - whichever one is a smaller stop loss
+    sl_spread = entry_price - (spread * sl_mult) if direction == 'long' else entry_price + (spread * sl_mult)
+    sl_point = entry_price - SL_POINT_LIMIT if direction == 'long' else entry_price + SL_POINT_LIMIT
+    sl_price = max(sl_spread, sl_point) if direction == 'long' else min(sl_spread, sl_point)
+
+    if is_reentry:
+        sl_price = sl_spread
+
+    log(f"[Day {day_index + 1} - {current_date}{' (Re-entry)' if is_reentry else ''}] Take Profit: {tp_price}, Stop Loss: {sl_price}\n")
 
     result = None
     active_hh = df_day.loc[entry_index, 'High']
@@ -231,8 +248,10 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
     exit_price = None
     exit_time = None
     trigger = "EOD"
+    current_index = entry_index + 1
 
     for j in range(entry_index + 1, len(df_day)):
+        current_index = j
         row = df_day.loc[j]
         high, low, time_j, close = row['High'], row['Low'], row['Time'], row['Close']
 
@@ -299,28 +318,32 @@ def evaluate_trade(df_day, entry_index, direction, extreme_price, day_index):
                          (direction == 'short' and exit_price <= tp_price) else "loss"
         trigger = "EOD"
 
-    log(f"[Day {day_index + 1} - {current_date}] {result.upper()}: Entry at {entry_price} ({entry_time}), "
-        f"{trigger} hit at {exit_time}, Exit at {exit_price}\n")
+    p_or_l = abs(exit_price - entry_price)
+    revenue = p_or_l if result == 'win' else -p_or_l
+    ex_before_0L = extended_hh if direction == 'long' else extended_ll
+
+    log(f"[Day {day_index + 1} - {current_date}{' (Re-entry)' if is_reentry else ''}] {result.upper()}: Entry at {entry_price} ({entry_time}), "
+        f"{trigger} hit at {exit_time}, Exit at {exit_price}, Revenue: {revenue}\n")
 
     if direction == 'long':
-        log(f"[Day {day_index + 1} - {current_date}] Highest while active: {active_hh}, "
+        log(f"[Day {day_index + 1} - {current_date}{' (Re-entry)' if is_reentry else ''}] Highest while active: {active_hh}, "
             f"Highest before return to 0L: {extended_hh}\n")
     else:
-        log(f"[Day {day_index + 1} - {current_date}] Lowest while active: {active_ll}, "
+        log(f"[Day {day_index + 1} - {current_date}{' (Re-entry)' if is_reentry else ''}] Lowest while active: {active_ll}, "
             f"Lowest before return to 0L: {extended_ll}\n")
 
     set_excel_property("Entry Price", entry_price)
     set_excel_property("Long/Short", 'Long' if direction == 'long' else 'Short')
     set_excel_property("W/L", "W" if result == 'win' else "L")
+    set_excel_property("Balance", revenue)
     set_excel_property("EX while active", active_hh if direction == 'long' else active_ll)
-    set_excel_property("EX before 0L", extended_hh if direction == 'long' else extended_ll)
+    set_excel_property("En+Sp", tp_price)
+    set_excel_property("EX before 0L", ex_before_0L)
+    set_excel_property("Max % of Spread", (abs(ex_before_0L - entry_price)/spread) * 100)
 
-    p_or_l = abs(exit_price - entry_price)
-
-    return result, p_or_l
+    return result, p_or_l, current_index
 
 # --- Log Functions ---
-
 def generate_log_filename() -> str:
     # Get the filename without folders
     base_name = "Analysis_From"
@@ -346,22 +369,35 @@ def log_popup(text):
     log(text)
     log_output += text
 
+def save_log():
+    global file_output
+    if not file_output:
+        return
+
+    output_filename = generate_log_filename()
+    with open(output_filename, "w") as file:
+        file.write(file_output)
+
 def set_excel_property(key, value):
     global excel_obj
     excel_obj[key] = value
 
-def reset_excel_obj(date):
+def reset_excel_obj(date, is_reentry=False):
     global excel_obj
     excel_obj = {"Date": date,
+                 "Re-entry": 'Yes' if is_reentry else 'No',
+                 "Long/Short": '',
+                 "Entry Price": '',
+                 "Spread": '',
                  "0L": '',
                  "EX": '',
                  "RT %": '',
-                 "Spread": '',
-                 "Entry Price": '',
-                 "Long/Short": '',
                  "W/L": '',
+                 "Balance": '',
                  "EX while active": '',
-                 "EX before 0L": ''}
+                 "En+Sp": '',
+                 "EX before 0L": '',
+                 "Max % of Spread": ''}
 
 def log_excel_entry():
     global excel_obj
@@ -391,6 +427,10 @@ def main():
     validation_count = 0
     trade_win = 0
     trade_loss = 0
+    loss_before_reentry = 0
+    reentry_validation = 0
+    reentry_win = 0
+    reentry_loss = 0
     total_profit = 0
     total_loss = 0
 
@@ -413,13 +453,35 @@ def main():
             validation_count += 1
 
         if result['validation_found']:
-            trade_outcome, p_or_l = evaluate_trade(df_day, entry_idx, direction, result["extreme_price"], day_index)
+            trade_outcome, p_or_l, exit_index = evaluate_trade(df_day, entry_idx, direction, result["extreme_price"], day_index)
             if trade_outcome == "win":
                 trade_win += 1
                 total_profit += p_or_l
             elif trade_outcome == "loss":
                 trade_loss += 1
                 total_loss += p_or_l
+
+                # Re-entry logic
+                if df_day.loc[exit_index, "Time"] < REENTRY_DEADLINE:
+                    loss_before_reentry += 1
+                    log_excel_entry()
+                    reset_excel_obj(date, True)
+
+                    reentry_result = analyze_v_shape(df_day, day_index, exit_index, True)
+
+                    if reentry_result['validation_found']:
+                        reentry_validation += 1
+
+                        entry_idx = reentry_result['entry_index']
+                        direction = reentry_result['direction']
+                        trade_outcome, p_or_l, exit_index = evaluate_trade(df_day, entry_idx, direction,
+                                                                           reentry_result["extreme_price"], day_index, True)
+                        if trade_outcome == "win":
+                            reentry_win += 1
+                            total_profit += p_or_l
+                        elif trade_outcome == "loss":
+                            reentry_loss += 1
+                            total_loss += p_or_l
 
         log_excel_entry()
 
@@ -431,17 +493,23 @@ def main():
     if validation_count > 0:
         log_popup(f"Trades Won: {trade_win} ({trade_win / validation_count * 100:.1f}%)\n")
         log_popup(f"Trades Lost: {trade_loss} ({trade_loss / validation_count * 100:.1f}%)\n")
+
+        if trade_loss > 0:
+            log_popup(f"Re-entry Validation Found: {reentry_validation} ({reentry_validation / loss_before_reentry * 100:.1f}%)\n")
+
+        if reentry_validation > 0:
+            log_popup(f"Re-entry Trades Won: {reentry_win} ({reentry_win / reentry_validation * 100:.1f}%)\n")
+            log_popup(f"Re-entry Trades Lost: {reentry_loss} ({reentry_loss / reentry_validation * 100:.1f}%)\n")
+
         log_popup(f"Total Profit: {total_profit}\n")
         log_popup(f"Total Loss: {total_loss}\n")
         log_popup(f"Total Revenue: {total_profit - total_loss}\n")
     else:
         log_popup("No valid trades found.\n")
 
-    output_filename = generate_log_filename()
-    with open(output_filename, "w") as file:
-        file.write(file_output)
-
-    save_excel_log()
+    if INCLUDE_LOGS:
+        save_log()
+        save_excel_log()
 
     messagebox.showinfo("V-Shape Trade Analysis", log_output)
 
