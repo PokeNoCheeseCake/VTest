@@ -21,9 +21,15 @@ VALIDATION_BUFFER = params['validation_buffer_ticks'] * TICK_SIZE
 TP_MULTIPLIER = params['tp_multiplier']
 SL_MULTIPLIER = params['sl_multiplier']
 SL_POINT_LIMIT = params['sl_point_limit']
-REENTRY_DEADLINE = params['reentry_deadline']
-REENTRY_TP = params['reentry_tp_multiplier']
-REENTRY_SL = params['reentry_sl_multiplier']
+
+# Re-entry logic commented out and replaced with None for now
+# REENTRY_DEADLINE = params['reentry_deadline']
+# REENTRY_TP = params['reentry_tp_multiplier']
+# REENTRY_SL = params['reentry_sl_multiplier']
+REENTRY_DEADLINE = None
+REENTRY_TP = None
+REENTRY_SL = None
+
 INCLUDE_LOGS = params['include_logs']
 
 # --- Start GUI file picker ---
@@ -40,7 +46,7 @@ log_output = ""
 file_output = ""
 
 excel_obj = {"Date": '',
-             "Re-entry": '',
+             # "Re-entry": '',
                  "Long/Short": '',
                  "Entry Price": '',
                  "Spread": '',
@@ -389,7 +395,7 @@ def set_excel_property(key, value):
 def reset_excel_obj(date, is_reentry=False):
     global excel_obj
     excel_obj = {"Date": date,
-                 "Re-entry": 'Yes' if is_reentry else 'No',
+                 # "Re-entry": 'Yes' if is_reentry else 'No',
                  "Long/Short": '',
                  "Entry Price": '',
                  "Spread": '',
@@ -431,10 +437,11 @@ def main():
     validation_count = 0
     trade_win = 0
     trade_loss = 0
-    loss_before_reentry = 0
-    reentry_validation = 0
-    reentry_win = 0
-    reentry_loss = 0
+    # Re-entry logic put into comment for now
+    # loss_before_reentry = 0
+    # reentry_validation = 0
+    # reentry_win = 0
+    # reentry_loss = 0
     total_profit = 0
     total_loss = 0
 
@@ -465,38 +472,38 @@ def main():
                 trade_loss += 1
                 total_loss += p_or_l
 
-                # Re-entry logic
-                if df_day.loc[exit_index, "Time"] < REENTRY_DEADLINE:
-                    loss_before_reentry += 1
-                    log_excel_entry()
-                    reset_excel_obj(date, True)
-
-                    deadline_index = df_day[df_day["Time"] == REENTRY_DEADLINE].index
-
-                    if not deadline_index.empty:
-                        deadline_index = deadline_index[0]  # Get the actual index value
-                        # Now you can use deadline_index in further logic
-                    else:
-                        # Handle the case where no matching time was found
-                        deadline_index = None
-
-                    reentry_result = None
-                    if deadline_index is not None:
-                        reentry_result = analyze_v_shape(df_day, day_index, deadline_index, True)
-
-                    if reentry_result is not None and reentry_result['validation_found']:
-                        reentry_validation += 1
-
-                        entry_idx = reentry_result['entry_index']
-                        direction = reentry_result['direction']
-                        trade_outcome, p_or_l, exit_index = evaluate_trade(df_day, entry_idx, direction,
-                                                                           reentry_result["extreme_price"], day_index, True)
-                        if trade_outcome == "win":
-                            reentry_win += 1
-                            total_profit += p_or_l
-                        elif trade_outcome == "loss":
-                            reentry_loss += 1
-                            total_loss += p_or_l
+                # Re-entry logic - Put in comments for now
+                # if df_day.loc[exit_index, "Time"] < REENTRY_DEADLINE:
+                #     loss_before_reentry += 1
+                #     log_excel_entry()
+                #     reset_excel_obj(date, True)
+                #
+                #     deadline_index = df_day[df_day["Time"] == REENTRY_DEADLINE].index
+                #
+                #     if not deadline_index.empty:
+                #         deadline_index = deadline_index[0]  # Get the actual index value
+                #         # Now you can use deadline_index in further logic
+                #     else:
+                #         # Handle the case where no matching time was found
+                #         deadline_index = None
+                #
+                #     reentry_result = None
+                #     if deadline_index is not None:
+                #         reentry_result = analyze_v_shape(df_day, day_index, deadline_index, True)
+                #
+                #     if reentry_result is not None and reentry_result['validation_found']:
+                #         reentry_validation += 1
+                #
+                #         entry_idx = reentry_result['entry_index']
+                #         direction = reentry_result['direction']
+                #         trade_outcome, p_or_l, exit_index = evaluate_trade(df_day, entry_idx, direction,
+                #                                                            reentry_result["extreme_price"], day_index, True)
+                #         if trade_outcome == "win":
+                #             reentry_win += 1
+                #             total_profit += p_or_l
+                #         elif trade_outcome == "loss":
+                #             reentry_loss += 1
+                #             total_loss += p_or_l
 
         log_excel_entry()
 
@@ -509,12 +516,13 @@ def main():
         log_popup(f"Trades Won: {trade_win} ({trade_win / validation_count * 100:.1f}%)\n")
         log_popup(f"Trades Lost: {trade_loss} ({trade_loss / validation_count * 100:.1f}%)\n")
 
-        if trade_loss > 0:
-            log_popup(f"Re-entry Validation Found: {reentry_validation} ({reentry_validation / loss_before_reentry * 100:.1f}%)\n")
-
-        if reentry_validation > 0:
-            log_popup(f"Re-entry Trades Won: {reentry_win} ({reentry_win / reentry_validation * 100:.1f}%)\n")
-            log_popup(f"Re-entry Trades Lost: {reentry_loss} ({reentry_loss / reentry_validation * 100:.1f}%)\n")
+        # Re-entry logic put into comment for now
+        # if trade_loss > 0:
+        #     log_popup(f"Re-entry Validation Found: {reentry_validation} ({reentry_validation / loss_before_reentry * 100:.1f}%)\n")
+        #
+        # if reentry_validation > 0:
+        #     log_popup(f"Re-entry Trades Won: {reentry_win} ({reentry_win / reentry_validation * 100:.1f}%)\n")
+        #     log_popup(f"Re-entry Trades Lost: {reentry_loss} ({reentry_loss / reentry_validation * 100:.1f}%)\n")
 
         log_popup(f"Total Profit: {total_profit}\n")
         log_popup(f"Total Loss: {total_loss}\n")
