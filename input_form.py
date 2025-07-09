@@ -23,9 +23,11 @@ def show_input_form():
             tp_multiplier = float(entry_tp_multiplier.get()) / 100  # convert from % to ratio
             sl_multiplier = float(entry_sl_multiplier.get()) / 100  # convert from % to ratio
             sl_point_limit = float(entry_sl_points.get())
-            reentry_deadline = parse_time_str(entry_reentry_dealine.get())
-            reentry_tp_multiplier = float(entry_reentry_tp_multiplier.get()) / 100  # convert from % to ratio
-            reentry_sl_multiplier = float(entry_reentry_sl_multiplier.get()) / 100  # convert from % to ratio
+
+            # Re-entry logic commented out for now
+            # reentry_deadline = parse_time_str(entry_reentry_dealine.get())
+            # reentry_tp_multiplier = float(entry_reentry_tp_multiplier.get()) / 100  # convert from % to ratio
+            # reentry_sl_multiplier = float(entry_reentry_sl_multiplier.get()) / 100  # convert from % to ratio
             include_logs = include_logs_var.get()
 
             if not file_paths:
@@ -40,8 +42,10 @@ def show_input_form():
                 raise ValueError("Retracement start time must be earlier than entry deadline.")
             if market_close < market_open:
                 raise ValueError("Market close time cannot be earlier than market open.")
-            if reentry_deadline < market_open or reentry_deadline > market_close:
-                raise ValueError("Reentry time limit must be in the market day.")
+
+            # Re-entry logic commented out for now
+            # if reentry_deadline < market_open or reentry_deadline > market_close:
+            #     raise ValueError("Reentry time limit must be in the market day.")
 
             # Store parameters
             params.update({
@@ -57,9 +61,10 @@ def show_input_form():
                 "tp_multiplier": tp_multiplier,
                 "sl_multiplier": sl_multiplier,
                 "sl_point_limit": sl_point_limit,
-                "reentry_deadline": reentry_deadline,
-                "reentry_tp_multiplier": reentry_tp_multiplier,
-                "reentry_sl_multiplier": reentry_sl_multiplier,
+                # Re-entry logic commented out for now
+                # "reentry_deadline": reentry_deadline,
+                # "reentry_tp_multiplier": reentry_tp_multiplier,
+                # "reentry_sl_multiplier": reentry_sl_multiplier,
                 "include_logs": include_logs
             })
 
@@ -137,26 +142,27 @@ def show_input_form():
     entry_sl_points.insert(0, "6")
     entry_sl_points.grid(row=12, column=1)
 
-    tk.Label(root, text="Re-entry Deadline (HH:MM)").grid(row=13, column=0, sticky="e")
-    entry_reentry_dealine = tk.Entry(root)
-    entry_reentry_dealine.insert(0, "13:30")
-    entry_reentry_dealine.grid(row=13, column=1)
-
-    tk.Label(root, text="Re-entry TP Multiplier (%)").grid(row=14, column=0, sticky="e")
-    entry_reentry_tp_multiplier = tk.Entry(root)
-    entry_reentry_tp_multiplier.insert(0, "100")
-    entry_reentry_tp_multiplier.grid(row=14, column=1)
-
-    tk.Label(root, text="Re-entry SL Multiplier (%)").grid(row=15, column=0, sticky="e")
-    entry_reentry_sl_multiplier = tk.Entry(root)
-    entry_reentry_sl_multiplier.insert(0, "60")
-    entry_reentry_sl_multiplier.grid(row=15, column=1)
+    # Re-entry logic commented out for now
+    # tk.Label(root, text="Re-entry Deadline (HH:MM)").grid(row=13, column=0, sticky="e")
+    # entry_reentry_dealine = tk.Entry(root)
+    # entry_reentry_dealine.insert(0, "13:30")
+    # entry_reentry_dealine.grid(row=13, column=1)
+    #
+    # tk.Label(root, text="Re-entry TP Multiplier (%)").grid(row=14, column=0, sticky="e")
+    # entry_reentry_tp_multiplier = tk.Entry(root)
+    # entry_reentry_tp_multiplier.insert(0, "100")
+    # entry_reentry_tp_multiplier.grid(row=14, column=1)
+    #
+    # tk.Label(root, text="Re-entry SL Multiplier (%)").grid(row=15, column=0, sticky="e")
+    # entry_reentry_sl_multiplier = tk.Entry(root)
+    # entry_reentry_sl_multiplier.insert(0, "60")
+    # entry_reentry_sl_multiplier.grid(row=15, column=1)
 
     # Include Logs Checkbox
     include_logs_var = tk.BooleanVar(value=False)  # default: un-checked
-    tk.Checkbutton(root, text="Include Logs in Output", variable=include_logs_var).grid(row=16, column=0, sticky="e")
+    tk.Checkbutton(root, text="Include Logs in Output", variable=include_logs_var).grid(row=13, column=0, sticky="e")
 
-    tk.Button(root, text="Run Analysis", command=submit).grid(row=17, column=0, columnspan=2, pady=10)
+    tk.Button(root, text="Run Analysis", command=submit).grid(row=14, column=0, columnspan=2, pady=10)
 
     root.mainloop()
     return params
